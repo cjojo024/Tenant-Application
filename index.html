@@ -1,497 +1,241 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Tenant Application to Lease Commercial Real Estate</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lee &amp; Associates Pasadena - Small Unit Application</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<style>
-  body { background: linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter; }
-  .frame { width: 100%; height: 420px; border: 0; border-radius: 0.75rem; background:#f3f4f6; }
-</style>
+<style>.reqmiss{border:2px solid #dc2626 !important;} .fmsg{color:#dc2626; font-size:12px; margin-top:2px; display:none;} .thumbsel{outline:3px solid #b91c1c;}</style>
 </head>
-<body class="min-h-screen">
-<main class="max-w-[1200px] mx-auto p-6">
-  <!-- Top logo -->
-  <header class="text-center mb-6">
-    <img src="https://drive.google.com/thumbnail?id=1OOpckQf5nfNtT90XcGaXd4F-s25iEcR0&sz=w1200"
-         alt="Lee & Associates Logo"
-         class="mx-auto h-20 object-contain mb-4"
-         onerror="this.style.display='none'">
-    <h1 class="text-3xl font-semibold text-gray-800">Tenant Application to Lease Commercial Real Estate</h1>
-    <p class="text-gray-600 text-sm mt-1">Select a property & suite, preview images, then submit your info.</p>
-  </header>
-
-  <div class="grid gap-6 lg:grid-cols-[1fr_minmax(0,760px)_340px]">
-    <!-- ===== Main column ===== -->
-    <section class="bg-white rounded-2xl shadow-xl border p-6 space-y-8 lg:col-start-2">
-      <div class="bg-gradient-to-r from-red-800 to-gray-700 text-white text-center py-3 rounded-xl shadow">
-        <p class="font-medium tracking-wide">Commercial Real Estate Leasing Inquiry</p>
-      </div>
-
-      <script>
-        const SHEET_ID   = "1gKpntkbuT0kZzDneq1yoTPQeyACOYU18MuqJ-ogZcM0";
-        const SHEET_NAME = "Inventory";
-        const CSV_URL    = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&rand=${Date.now()}`;
-
-        const WEBHOOK_URL   = "https://script.google.com/macros/s/AKfycbzdwngCwvQBbBcTVuKaFMYb3ukdxoSyB1sJEI7xtYCbw9Q14JNKzuI_EumBPRFNAhd86w/exec";
-        const ADMIN_EMAIL   = "chris.johnson@lee-associates.com";
-        const FROM_EMAIL    = "cjohnson024@gmail.com";
-        const POWERFORM_URL = "https://na2.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=a29c7434-3630-4ce5-a660-9c3f6ee8961e&env=na2&acct=0824f0a0-ec33-4637-9689-fdaed038f2b2&v=2";
-
-        // localStorage key to track if user clicked the PowerForm link on the main page
-        const PF_CLICK_KEY = "pf_clicked";
-      </script>
-
-      <!-- Property & Suite -->
-      <div>
-        <h2 class="text-xl font-semibold mb-3 text-gray-800">Property & Suite</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="text-sm text-gray-700">Property</label>
-            <select id="propertySelect" class="w-full border rounded-lg px-3 py-2"></select>
-          </div>
-          <div>
-            <label class="text-sm text-gray-700">Suite</label>
-            <select id="suiteSelect" class="w-full border rounded-lg px-3 py-2"></select>
-          </div>
-        </div>
-
-        <!-- Facts -->
-        <div id="facts" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 hidden">
-          <div><p class="text-xs text-gray-500">Size</p><p id="factSize" class="text-lg font-medium">—</p></div>
-          <div><p class="text-xs text-gray-500">Total Rent</p><p id="factRent" class="text-lg font-medium">—</p></div>
-          <div><p class="text-xs text-gray-500">Minimum Term</p><p id="factMinTerm" class="text-lg font-medium">—</p></div>
-        </div>
-
-        <!-- Building / Floorplan -->
-        <div id="mediaCard" class="mt-4 hidden border rounded-xl p-4 bg-white">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 class="text-sm text-gray-600 mb-2">Building Photo</h3>
-              <iframe id="buildingFrame" class="frame" allowfullscreen></iframe>
-              <div class="mt-2 text-xs text-gray-600 break-all">Source: <a id="buildingOpen" href="#" target="_blank" class="underline">(open original)</a></div>
-            </div>
-            <div>
-              <h3 class="text-sm text-gray-600 mb-2">Floorplan</h3>
-              <iframe id="floorFrame" class="frame" allowfullscreen></iframe>
-              <div class="mt-2 text-xs text-gray-600 break-all">Source: <a id="floorOpen" href="#" target="_blank" class="underline">(open original)</a></div>
-            </div>
-          </div>
-        </div>
-
-        <div id="sheetWarn" class="hidden mt-4 text-red-700 bg-red-50 border border-red-200 rounded-xl p-4"></div>
-      </div>
-
-      <!-- Tenant Info -->
-      <div>
-        <h2 class="text-xl font-semibold text-gray-800">Tenant Information</h2>
-
-        <form id="tenantForm" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="text-sm text-gray-700">Business Legal Name</label>
-              <input id="bizName" type="text" class="w-full border rounded-lg px-3 py-2" placeholder="ACME, LLC" />
-            </div>
-            <div>
-              <label class="text-sm text-gray-700">Desired Lease Start</label>
-              <input id="startDate" type="date" class="w-full border rounded-lg px-3 py-2" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="text-sm text-gray-700">Signer 1 (Full Legal Name)</label>
-              <input id="signer1" type="text" class="w-full border rounded-lg px-3 py-2" />
-            </div>
-            <div>
-              <label class="text-sm text-gray-700">Signer 2 (Optional)</label>
-              <input id="signer2" type="text" class="w-full border rounded-lg px-3 py-2" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="text-sm text-gray-700">Desired Term</label>
-              <select id="desiredTerm" class="w-full border rounded-lg px-3 py-2">
-                <option value="">(choose)</option>
-              </select>
-              <p class="text-xs text-gray-500 mt-1">Choices start at the suite's minimum term.</p>
-            </div>
-            <div>
-              <label class="text-sm text-gray-700">Email</label>
-              <input id="email" type="email" class="w-full border rounded-lg px-3 py-2" placeholder="name@example.com" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="text-sm text-gray-700">Phone</label>
-              <input id="phone" type="tel" class="w-full border rounded-lg px-3 py-2" placeholder="(555) 555-5555" />
-            </div>
-            <div>
-              <label class="text-sm text-gray-700">Mailing Address</label>
-              <input id="mailing" type="text" class="w-full border rounded-lg px-3 py-2" placeholder="1055 E Colorado Blvd, Pasadena, CA 91106" />
-            </div>
-          </div>
-
-          <div>
-            <label class="text-sm text-gray-700">Upload additional financial information (e.g., tax returns, income & expense statements) — optional, ≤ 5 MB</label>
-            <input id="financials" type="file" class="w-full border rounded-lg px-3 py-2" />
-          </div>
-
-          <!-- Credit Authorization (main page link) -->
-          <div class="pt-2">
-            <h3 class="text-base font-semibold text-gray-800 mb-2">Credit Application & Authorization</h3>
-            <a href="#" id="powerformBtn" target="_blank" class="inline-flex items-center px-4 py-2 rounded-lg text-white bg-red-700 hover:bg-red-800">
-              Credit Application and Authorization Form
-            </a>
-            <p class="text-sm text-gray-600 mt-2">
-              Credit check authorization is mandatory to complete the tenant application process.
-              Credit checks are performed using a third party credit service and are at no charge
-              to the prospective tenant. <br><br>
-              After you have completed and signed the above Credit Application and Authorization,
-              please return to this page and complete this form by clicking <span class="font-semibold">"Submit"</span> below.
-            </p>
-          </div>
-
-          <div class="pt-2 flex items-center gap-3">
-            <button id="submitBtn" type="submit" class="px-4 py-2 rounded-lg text-white bg-red-700 hover:bg-red-800 disabled:opacity-60 disabled:cursor-not-allowed">Submit</button>
-            <div id="submitMsg" class="text-sm"></div>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- ===== Right sticky sidebar (robust image loader) ===== -->
-    <aside class="lg:col-start-3 md:sticky md:top-6 md:self-start">
-      <div id="contactWrap" class="m-0 p-0">
-        <img id="contactImg"
-             alt="Contact"
-             width="301" height="1243"
-             class="block w-full h-auto"
-             style="background:transparent; margin:0; padding:0; border:none;"
-             referrerpolicy="no-referrer"
-             decoding="async"
-             loading="lazy">
-      </div>
-      <script>
-        (function(){
-          // Try thumbnail (preferred), then direct-view, then preview iframe.
-          const ID = "1g8ubqki64ZHBj40w6e4KFis4JttlnWcF";
-          const sources = [
-            `https://drive.google.com/thumbnail?id=${ID}&sz=w1600`,
-            `https://drive.google.com/uc?export=view&id=${ID}`
-          ];
-          const img  = document.getElementById('contactImg');
-          const wrap = document.getElementById('contactWrap');
-          let i = 0;
-          function tryNext(){
-            if(i < sources.length){
-              img.src = sources[i++];
-            } else {
-              const ifr = document.createElement('iframe');
-              ifr.className = 'frame';
-              ifr.allowFullscreen = true;
-              ifr.src = `https://drive.google.com/file/d/${ID}/preview`;
-              wrap.innerHTML = '';
-              wrap.appendChild(ifr);
-            }
-          }
-          img.onerror = tryNext;
-          tryNext();
-        })();
-      </script>
-    </aside>
+<body class="bg-gray-100 text-gray-800">
+<div class="bg-gradient-to-r from-red-800 to-gray-700 text-white">
+  <div class="max-w-[1200px] mx-auto px-4 py-5 flex items-center gap-4">
+    <img src="https://drive.google.com/thumbnail?id=1OOpckQf5nfNtT90XcGaXd4F-s25iEcR0&sz=w400" alt="Lee &amp; Associates" class="h-14 bg-white rounded p-1" onerror="this.style.display='none'">
+    <div><div class="text-2xl font-bold">Available Small Units</div><div class="text-sm opacity-90">Lee &amp; Associates - Pasadena, Inc. &middot; Application</div></div>
   </div>
-</main>
-
+</div>
+<div class="max-w-[1200px] mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div class="md:col-span-2 space-y-6">
+    <div class="bg-white rounded-lg shadow p-5 space-y-4">
+      <h2 class="text-lg font-bold">1. Pick the unit</h2>
+      <div><label class="block text-sm font-semibold mb-1">Property *</label>
+        <select id="selProperty" class="w-full border rounded p-2"><option value="">Loading units...</option></select>
+        <div class="fmsg" id="m_property">Pick a property</div></div>
+      <div><label class="block text-sm font-semibold mb-1">Suite *</label>
+        <select id="selSuite" class="w-full border rounded p-2"><option value="">Select a property first</option></select>
+        <div class="fmsg" id="m_suite">Pick a suite</div></div>
+      <div id="facts" class="hidden bg-gray-50 border rounded p-3 text-sm">
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div><div class="text-xs uppercase text-gray-500">Size</div><div id="fSize" class="font-bold"></div></div>
+          <div><div class="text-xs uppercase text-gray-500">Total Rent</div><div id="fRent" class="font-bold"></div></div>
+          <div><div class="text-xs uppercase text-gray-500">Minimum Term</div><div id="fTerm" class="font-bold"></div></div>
+        </div>
+        <div id="fBlurb" class="mt-2 text-gray-600"></div>
+      </div>
+      <div id="mediaWrap" class="hidden space-y-2">
+        <iframe id="mainPreview" class="w-full h-72 border rounded" allow="autoplay"></iframe>
+        <div id="thumbStrip" class="flex gap-2 flex-wrap"></div>
+        <div id="planWrap" class="hidden"><div class="text-sm font-semibold mt-2">Floorplan</div><iframe id="planPreview" class="w-full h-72 border rounded"></iframe></div>
+      </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-5 space-y-4">
+      <h2 class="text-lg font-bold">2. Your information</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div><label class="block text-sm font-semibold mb-1">Business legal name *</label><input id="f_business" class="w-full border rounded p-2"><div class="fmsg" id="m_business">Required</div></div>
+        <div><label class="block text-sm font-semibold mb-1">Signer 1 (full name) *</label><input id="f_signer1" class="w-full border rounded p-2"><div class="fmsg" id="m_signer1">Required</div></div>
+        <div><label class="block text-sm font-semibold mb-1">Signer 2 (optional)</label><input id="f_signer2" class="w-full border rounded p-2"></div>
+        <div><label class="block text-sm font-semibold mb-1">Desired term *</label><select id="f_term" class="w-full border rounded p-2"></select><div class="fmsg" id="m_term">Required</div></div>
+        <div><label class="block text-sm font-semibold mb-1">Email *</label><input id="f_email" type="email" class="w-full border rounded p-2"><div class="fmsg" id="m_email">Required</div></div>
+        <div><label class="block text-sm font-semibold mb-1">Phone *</label><input id="f_phone" class="w-full border rounded p-2"><div class="fmsg" id="m_phone">Required</div></div>
+        <div class="md:col-span-2"><label class="block text-sm font-semibold mb-1">Current mailing address</label><input id="f_mailing" class="w-full border rounded p-2"></div>
+        <div><label class="block text-sm font-semibold mb-1">Desired start date *</label><input id="f_start" type="date" class="w-full border rounded p-2"><div class="fmsg" id="m_start">Required</div></div>
+        <div><label class="block text-sm font-semibold mb-1">Financials (optional, max 5 MB)</label><input id="f_fin" type="file" class="w-full border rounded p-2 text-sm"></div>
+      </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-5 space-y-3">
+      <h2 class="text-lg font-bold">3. Credit application (required)</h2>
+      <p class="text-sm text-gray-600">Every application must include a signed credit authorization. It opens in a new tab via DocuSign and takes about two minutes.</p>
+      <a href="https://na2.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=a29c7434-3630-4ce5-a660-9c3f6ee8961e&env=na2&acct=0824f0a0-ec33-4637-9689-fdaed038f2b2&v=2" target="_blank" onclick="try{localStorage.setItem('pf_clicked','1')}catch(e){}" class="inline-block bg-red-700 hover:bg-red-800 text-white font-semibold px-4 py-2 rounded">Open credit application (DocuSign)</a>
+    </div>
+    <div class="bg-white rounded-lg shadow p-5 space-y-3">
+      <div id="vsummary" class="text-red-600 text-sm font-semibold hidden"></div>
+      <button id="btnSubmit" class="bg-red-700 hover:bg-red-800 text-white font-bold px-6 py-3 rounded w-full md:w-auto">Submit application</button>
+      <div id="subStat" class="text-sm text-gray-500"></div>
+    </div>
+  </div>
+  <div class="md:col-span-1">
+    <div class="bg-white rounded-lg shadow p-5 md:sticky md:top-6 space-y-3 text-center">
+      <img src="https://drive.google.com/thumbnail?id=1g8ubqki64ZHBj40w6e4KFis4JttlnWcF&sz=w600" alt="Chris Johnson" class="w-full rounded" onerror="this.style.display='none'">
+      <div class="font-bold text-lg">Chris Johnson</div>
+      <div class="text-sm text-gray-600">Senior Vice President<br>Lee and Associates - Pasadena Inc.<br>1055 E Colorado Blvd. STE 330<br>Pasadena, CA 91106</div>
+      <div class="text-sm"><a class="text-red-700 font-semibold" href="mailto:Chris.johnson@lee-associates.com">Chris.johnson@lee-associates.com</a><br><a class="text-red-700 font-semibold" href="tel:626-240-2786">626-240-2786</a></div>
+    </div>
+  </div>
+</div>
 <script>
-  /* ---------- Helpers ---------- */
-  function parseCSV(text){
-    const rows = []; let row = [], val = '', inQ = false;
-    for(let i=0;i<text.length;i++){
-      const c = text[i], n = text[i+1];
-      if(inQ){
-        if(c === '"' && n === '"'){ val += '"'; i++; continue; }
-        if(c === '"'){ inQ = false; continue; }
-        val += c;
-      }else{
-        if(c === '"'){ inQ = true; continue; }
-        if(c === ','){ row.push(val); val=''; continue; }
-        if(c === '\n'){ row.push(val); rows.push(row); row=[]; val=''; continue; }
-        if(c === '\r'){ continue; }
-        val += c;
-      }
-    }
-    if(val.length || row.length){ row.push(val); rows.push(row); }
-    return rows;
+var WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzdwngCwvQBbBcTVuKaFMYb3ukdxoSyB1sJEI7xtYCbw9Q14JNKzuI_EumBPRFNAhd86w/exec";
+var ADMIN_EMAIL = "chris.johnson@lee-associates.com";
+var FROM_EMAIL = "cjohnson024@gmail.com";
+var LOGO_ID = "1OOpckQf5nfNtT90XcGaXd4F-s25iEcR0";
+var UNITS = [];
+function norm(s){ return String(s == null ? "" : s).toLowerCase().replace(/[^a-z0-9]/g, ""); }
+function extractUrl(s){ var m = String(s == null ? "" : s).match(/https:\/\/[^\s"\)]+/); return m ? m[0] : ""; }
+function driveId(u){ var m = String(u == null ? "" : u).match(/\/file\/d\/([^\/]+)/); if (m) return m[1]; m = String(u).match(/[?&]id=([^&]+)/); return m ? m[1] : ""; }
+function toPreviewUrl(u){ var id = driveId(extractUrl(u)); return id ? "https://drive.google.com/file/d/" + id + "/preview" : ""; }
+function thumbUrl(u){ var id = driveId(extractUrl(u)); return id ? "https://drive.google.com/thumbnail?id=" + id + "&sz=w1600" : ""; }
+function fmtMoney(x){ var n = Number(String(x == null ? "" : x).replace(/[^0-9.]/g, "")); return n ? "$" + n.toLocaleString("en-US") + "/mo" : "Call for rent"; }
+function fmtSf(x){ var n = Number(String(x == null ? "" : x).replace(/[^0-9.]/g, "")); return n ? n.toLocaleString("en-US") + " SF" : "-"; }
+function el(id){ return document.getElementById(id); }
+function props(){ var seen = {}, out = []; UNITS.forEach(function(u){ if (!seen[norm(u.address)]){ seen[norm(u.address)] = 1; out.push(u.address); } }); return out; }
+function suitesFor(addr){ return UNITS.filter(function(u){ return norm(u.address) === norm(addr); }); }
+function curUnit(){ var a = el("selProperty").value, s = el("selSuite").value; return UNITS.find(function(u){ return norm(u.address) === norm(a) && norm(u.suite) === norm(s); }) || null; }
+function fillProps(){ var sel = el("selProperty"); sel.innerHTML = "<option value=\"\">Select a property</option>" + props().map(function(a){ return "<option>" + a.replace(/</g, "&lt;") + "</option>"; }).join(""); }
+function fillSuites(){ var sel = el("selSuite"); var a = el("selProperty").value; var list = a ? suitesFor(a) : []; sel.innerHTML = "<option value=\"\">" + (a ? "Select a suite" : "Select a property first") + "</option>" + list.map(function(u){ return "<option value=\"" + String(u.suite).replace(/"/g, "&quot;") + "\">" + (u.suite ? "Suite " + u.suite : "Entire building").replace(/</g, "&lt;") + " - " + fmtSf(u.size_sf) + "</option>"; }).join(""); }
+function termOptions(minTerm){ var mt = Number(String(minTerm == null ? "" : minTerm).replace(/[^0-9]/g, "")) || 12; var opts = [mt, 12, 24, 36, 48, 60, 72].filter(function(v, i, arr){ return arr.indexOf(v) === i; }).filter(function(v){ return v >= mt; }).sort(function(a, b){ return a - b; }); return opts; }
+function fillTerm(u){ var sel = el("f_term"); if (!u){ sel.innerHTML = "<option value=\"\">Pick a unit first</option>"; return; } sel.innerHTML = "<option value=\"\">Select a term</option>" + termOptions(u.min_term_months).map(function(m){ return "<option value=\"" + m + "\">" + m + " months</option>"; }).join(""); }
+var mediaLinks = [];
+function showMedia(u){
+  var wrap = el("mediaWrap"), strip = el("thumbStrip"), main = el("mainPreview");
+  mediaLinks = (u && u.photos ? u.photos.slice() : []).filter(function(p){ return extractUrl(p); });
+  if (!u || (!mediaLinks.length && !extractUrl(u.floorplan))){ wrap.classList.add("hidden"); return; }
+  wrap.classList.remove("hidden");
+  if (mediaLinks.length){ main.classList.remove("hidden"); main.src = toPreviewUrl(mediaLinks[0]); } else { main.classList.add("hidden"); main.src = "about:blank"; }
+  strip.innerHTML = mediaLinks.map(function(p, i){ return "<img data-i=\"" + i + "\" src=\"" + thumbUrl(p) + "\" class=\"h-16 w-24 object-cover rounded border cursor-pointer" + (i === 0 ? " thumbsel" : "") + "\" onerror=\"this.src=&quot;https://drive.google.com/uc?export=view&amp;id=" + driveId(extractUrl(p)) + "&quot;;this.onerror=null\">"; }).join("");
+  strip.querySelectorAll("img").forEach(function(img){ img.addEventListener("click", function(){ var i = Number(img.getAttribute("data-i")); main.src = toPreviewUrl(mediaLinks[i]); strip.querySelectorAll("img").forEach(function(x){ x.classList.remove("thumbsel"); }); img.classList.add("thumbsel"); }); });
+  var plan = extractUrl(u.floorplan); if (plan){ el("planWrap").classList.remove("hidden"); el("planPreview").src = toPreviewUrl(plan); } else { el("planWrap").classList.add("hidden"); }
+}
+function showUnit(){
+  var u = curUnit();
+  if (!u){ el("facts").classList.add("hidden"); el("mediaWrap").classList.add("hidden"); fillTerm(null); return; }
+  el("facts").classList.remove("hidden");
+  el("fSize").textContent = fmtSf(u.size_sf);
+  el("fRent").textContent = fmtMoney(u.total_rent) + (u.rate_note ? " " + u.rate_note : "");
+  el("fTerm").textContent = (u.min_term_months || "12") + " months";
+  el("fBlurb").textContent = u.blurb || "";
+  fillTerm(u); showMedia(u);
+}
+function applyParams(){
+  var q = new URLSearchParams(location.search);
+  var p = q.get("property"), s = q.get("suite");
+  if (p){ p = decodeURIComponent(p); var match = props().find(function(a){ return norm(a) === norm(p); }); if (match){ el("selProperty").value = match; fillSuites(); } }
+  if (s){ s = decodeURIComponent(s); var u = suitesFor(el("selProperty").value).find(function(x){ return norm(x.suite) === norm(s); }); if (u) el("selSuite").value = u.suite; }
+  showUnit();
+}
+var REQ = [["selProperty", "m_property", "Property"], ["selSuite", "m_suite", "Suite"], ["f_business", "m_business", "Business legal name"], ["f_signer1", "m_signer1", "Signer 1"], ["f_term", "m_term", "Desired term"], ["f_email", "m_email", "Email"], ["f_phone", "m_phone", "Phone"], ["f_start", "m_start", "Desired start date"]];
+function validateForm(){
+  var missing = [];
+  REQ.forEach(function(r){
+    var f = el(r[0]), m = el(r[1]);
+    var ok = f && String(f.value || "").trim() !== "";
+    if (f) f.classList.toggle("reqmiss", !ok);
+    if (m) m.style.display = ok ? "none" : "block";
+    if (!ok) missing.push(r[2]);
+  });
+  var vs = el("vsummary");
+  if (missing.length){ vs.textContent = "Please complete: " + missing.join(", "); vs.classList.remove("hidden"); }
+  else vs.classList.add("hidden");
+  return missing.length === 0;
+}
+function thankYou(){
+  var pf = false; try { pf = localStorage.getItem("pf_clicked") === "1"; } catch (e) {}
+  var remind = pf ? "" : "<div class=\"max-w-xl mx-auto mt-6 bg-yellow-50 border border-yellow-300 rounded p-4 text-left\"><b>One more step:</b> we did not see you open the credit application. A signed credit authorization is mandatory - please open it here: <a class=\"text-red-700 font-semibold underline\" target=\"_blank\" href=\"https://na2.docusign.net/Member/PowerFormSigning.aspx?PowerFormId=a29c7434-3630-4ce5-a660-9c3f6ee8961e&env=na2&acct=0824f0a0-ec33-4637-9689-fdaed038f2b2&v=2\">DocuSign credit application</a></div>";
+  document.body.innerHTML = "<div class=\"min-h-screen bg-gray-100 py-16 px-4 text-center\"><img src=\"https://drive.google.com/thumbnail?id=" + LOGO_ID + "&sz=w400\" class=\"h-16 mx-auto mb-6\" onerror=\"this.style.display=&quot;none&quot;\"><h1 class=\"text-3xl font-bold text-gray-800\">Thank you!</h1><p class=\"mt-3 text-gray-600 max-w-xl mx-auto\">Your application was received. Chris will review it and get back to you shortly.</p>" + remind + "<div class=\"mt-8 text-sm text-gray-600\">Chris Johnson - Senior Vice President<br>Lee and Associates - Pasadena Inc.<br>1055 E Colorado Blvd. STE 330, Pasadena, CA 91106<br><a class=\"text-red-700 font-semibold\" href=\"mailto:Chris.johnson@lee-associates.com\">Chris.johnson@lee-associates.com</a> &middot; <a class=\"text-red-700 font-semibold\" href=\"tel:626-240-2786\">626-240-2786</a></div></div>";
+}
+function readFin(cb){
+  var f = el("f_fin").files[0];
+  if (!f) return cb(null);
+  if (f.size > 5 * 1024 * 1024){ alert("Financials file is over 5 MB - please attach a smaller file or skip it."); return cb("too_big"); }
+  var r = new FileReader();
+  r.onload = function(){ cb({ name: f.name, mime: f.type || "application/octet-stream", base64: String(r.result).split(",")[1] || "" }); };
+  r.onerror = function(){ cb(null); };
+  r.readAsDataURL(f);
+}
+function doSubmit(){
+  if (!validateForm()) return;
+  var u = curUnit(); if (!u) return;
+  var btn = el("btnSubmit"); btn.disabled = true; el("subStat").textContent = "Submitting...";
+  readFin(function(fin){
+    if (fin === "too_big"){ btn.disabled = false; el("subStat").textContent = ""; return; }
+    var fd = new FormData();
+    fd.append("property", u.address);
+    fd.append("suite", u.suite);
+    fd.append("size_sf", u.size_sf || "");
+    fd.append("total_rent", u.total_rent || "");
+    fd.append("min_term_months", u.min_term_months || "");
+    fd.append("building_photo", (u.photos && u.photos[0]) || "");
+    fd.append("floorplan", u.floorplan || "");
+    fd.append("business_legal_name", el("f_business").value.trim());
+    fd.append("signer1", el("f_signer1").value.trim());
+    fd.append("signer2", el("f_signer2").value.trim());
+    fd.append("desired_term_months", el("f_term").value);
+    fd.append("email", el("f_email").value.trim());
+    fd.append("phone", el("f_phone").value.trim());
+    fd.append("mailing_address", el("f_mailing").value.trim());
+    fd.append("desired_start_date", el("f_start").value);
+    fd.append("admin_email", ADMIN_EMAIL);
+    fd.append("from_email", FROM_EMAIL);
+    fd.append("subject", "New Application - " + u.address + (u.suite ? " Suite " + u.suite : ""));
+    if (fin){ fd.append("financials_name", fin.name); fd.append("financials_mime", fin.mime); fd.append("financials_base64", fin.base64); }
+    fetch(WEBHOOK_URL, { method: "POST", mode: "no-cors", body: fd }).then(function(){ thankYou(); }).catch(function(){ btn.disabled = false; el("subStat").textContent = "Something went wrong sending the application - please try again or email Chris directly."; });
+  });
+}
+function boot(data){
+  UNITS = (data && data.units) || [];
+  fillProps(); fillSuites(); fillTerm(null); applyParams();
+  el("selProperty").addEventListener("change", function(){ fillSuites(); showUnit(); });
+  el("selSuite").addEventListener("change", showUnit);
+  el("btnSubmit").addEventListener("click", doSubmit);
+}
+var SHEET_ID = "15Qo1-WxINAfW-4QcVseggKdRz8P6W1MRxQD-ZsbXsKc";
+var SHEET_URL = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&rand=";
+function parseCsv(text){
+  var rows = [], row = [], cell = "", q = false, s = String(text || "");
+  for (var i = 0; i < s.length; i++){
+    var c = s[i];
+    if (q){ if (c === '"'){ if (s[i + 1] === '"'){ cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ","){ row.push(cell); cell = ""; }
+    else if (c === "\n"){ row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (c !== "\r") cell += c;
   }
-  const norm = (v)=> String(v==null?'':v).normalize('NFKC').replace(/\s+/g,' ').trim().toLowerCase();
-  const extractUrl = (s)=> { if(!s) return ''; const m=String(s).match(/https?:\/\/[^"')\s]+/i); return m?m[0]:''; };
-  const toPreviewUrl = (u)=>{ if(!u) return ''; const m=String(u).match(/\/file\/d\/([^/]+)\//)||String(u).match(/[?&]id=([^&]+)/); const id=m?m[1]:''; return id?`https://drive.google.com/file/d/${id}/preview`:''; };
-  const formatCurrencyMaybe = (v)=>{ if(v==null||v==='') return '—'; const num=Number(String(v).replace(/[^0-9.-]/g,'')); return isFinite(num)? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(num):String(v); };
-  function findCol(headers, candidates){
-    const H = headers.map(h => (h||'').trim().toLowerCase());
-    for(const cand of candidates){
-      const c = cand.toLowerCase();
-      let idx = H.findIndex(h => h === c);
-      if(idx !== -1) return idx;
-      idx = H.findIndex(h => h.includes(c));
-      if(idx !== -1) return idx;
-    }
-    return -1;
+  if (cell !== "" || row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+function colIdx(headers, frags){
+  var h = headers.map(function(x){ return String(x == null ? "" : x).toLowerCase(); });
+  for (var i = 0; i < h.length; i++){ var ok = true; for (var j = 0; j < frags.length; j++) if (h[i].indexOf(frags[j]) < 0) ok = false; if (ok) return i; }
+  return -1;
+}
+function digitsOnly(v){ return String(v == null ? "" : v).replace(/[^0-9.]/g, ""); }
+function wholeNum(v){ var n = Math.round(Number(digitsOnly(v)) || 0); return n ? String(n) : ""; }
+function sheetToUnits(aoa){
+  if (!aoa || !aoa.length) return [];
+  var hd = aoa[0];
+  var ix = { on: colIdx(hd, ["on", "website"]), addr: colIdx(hd, ["address"]), suite: colIdx(hd, ["suite"]), size: colIdx(hd, ["size"]),
+    rate: colIdx(hd, ["rate", "sf"]), rent: colIdx(hd, ["total", "rent"]), basis: colIdx(hd, ["basis"]), term: colIdx(hd, ["term"]),
+    plan: colIdx(hd, ["floorplan"]), photos: colIdx(hd, ["photo"]), blurb: colIdx(hd, ["blurb"]) };
+  if (ix.on < 0 || ix.addr < 0) return [];
+  var cell = function(r, i){ return (i >= 0 && r[i] != null) ? String(r[i]).trim() : ""; };
+  var out = [];
+  for (var k = 1; k < aoa.length; k++){
+    var r = aoa[k];
+    var on = cell(r, ix.on).toLowerCase();
+    var addr = cell(r, ix.addr);
+    if (!addr) continue;
+    if (on !== "yes" && on !== "y" && on !== "true" && on !== "x") continue;
+    var rent = wholeNum(cell(r, ix.rent));
+    if (!rent){ var rt = Number(digitsOnly(cell(r, ix.rate))), sz = Number(digitsOnly(cell(r, ix.size))); if (rt && sz && rt < 20) rent = String(Math.round(rt * sz)); else if (rt >= 20) rent = String(Math.round(rt)); }
+    var photos = (ix.photos >= 0 && r[ix.photos] != null) ? String(r[ix.photos]).split(/\r?\n/) : [];
+    photos = photos.map(function(p){ return p.trim(); }).filter(Boolean);
+    out.push({ id: "row" + k, address: addr, suite: cell(r, ix.suite), size_sf: wholeNum(cell(r, ix.size)), total_rent: rent,
+      rate_note: cell(r, ix.basis), min_term_months: wholeNum(cell(r, ix.term)) || "12", floorplan: cell(r, ix.plan), photos: photos, blurb: cell(r, ix.blurb) });
   }
-  async function fetchInventoryCSV(){
-    const csv = await fetch(CSV_URL, {cache:'no-store'}).then(r=>r.text());
-    const rows = parseCSV(csv);
-    if(!rows.length) return [];
-    const headers = rows[0];
-    const cAddr  = findCol(headers, ['building address','property','address','building']);
-    const cSuite = findCol(headers, ['suite','suite number','unit','ste','suite/unit','ste/unit']);
-    const cSize  = findCol(headers, ['size (sf)','size','sq ft','square feet']);
-    const cRent  = findCol(headers, ['total rent','rent','monthly rent']);
-    const cMin   = findCol(headers, ['minimum term (months)','minimum term','min term']);
-    const cFloor = findCol(headers, ['floorplan','floor plan','plan']);
-    const cPhoto = findCol(headers, ['building photo','photo','exterior','building image']);
-    const out = [];
-    for(let i=1;i<rows.length;i++){
-      const r = rows[i];
-      const address = cAddr>-1 ? r[cAddr] : '';
-      if(!address) continue;
-      out.push({
-        address: String(address).trim(),
-        suite:   cSuite>-1 ? String(r[cSuite] ?? '').trim() : '',
-        size:    cSize>-1 ? r[cSize] : '',
-        rent:    cRent>-1 ? r[cRent] : '',
-        min:     cMin>-1  ? r[cMin]  : '',
-        floorRaw:cFloor>-1? r[cFloor]: '',
-        photoRaw:cPhoto>-1? r[cPhoto]: ''
-      });
-    }
-    return out;
-  }
-
-  (async()=>{
-    try{
-      const data = await fetchInventoryCSV();
-      const warn = document.getElementById('sheetWarn');
-      if(!data.length){
-        warn.textContent = `No rows found. Check "${SHEET_NAME}" and headers.`;
-        warn.classList.remove('hidden');
-      }
-
-      const property = document.getElementById('propertySelect');
-      const suite    = document.getElementById('suiteSelect');
-      const facts    = document.getElementById('facts');
-      const sizeEl   = document.getElementById('factSize');
-      const rentEl   = document.getElementById('factRent');
-      const termEl   = document.getElementById('factMinTerm');
-      const media    = document.getElementById('mediaCard');
-      const bFrame   = document.getElementById('buildingFrame');
-      const fFrame   = document.getElementById('floorFrame');
-      const bOpen    = document.getElementById('buildingOpen');
-      const fOpen    = document.getElementById('floorOpen');
-
-      // PowerForm link
-      const pfBtn = document.getElementById('powerformBtn');
-      pfBtn.href = POWERFORM_URL;
-      pfBtn.addEventListener('click', ()=> {
-        // mark that user clicked the PowerForm link (we'll read this on the thank-you page)
-        try { localStorage.setItem(PF_CLICK_KEY, String(Date.now())); } catch(e){}
-      });
-
-      // Group by property
-      const groups = {};
-      for(const row of data){
-        const key = norm(row.address);
-        if(!groups[key]) groups[key] = { display: row.address, rows: [] };
-        groups[key].rows.push(row);
-      }
-      const addressList = Object.values(groups).map(g => g.display);
-
-      // Populate property dropdown
-      property.innerHTML = '<option value="">Select a property</option>' +
-        addressList.map(a => `<option value="${a}">${a}</option>`).join('');
-
-      // Property change
-      property.onchange = () => {
-        const addrSel = property.value;
-        const g = groups[norm(addrSel)];
-        const rows = g ? g.rows : [];
-
-        const suites = rows
-          .map(r => String(r.suite))
-          .filter(s => s && s.trim() !== '');
-
-        suite.innerHTML = '<option value="">Select a suite</option>' +
-          suites.map(sv => `<option value="${sv}">${sv}</option>`).join('');
-        suite.disabled = false;
-
-        const photoRaw = (rows.find(s=>s.photoRaw)||{}).photoRaw || '';
-        bFrame.src = toPreviewUrl(extractUrl(photoRaw)) || 'about:blank';
-        bOpen.href = extractUrl(photoRaw) || '#';
-        media.classList.remove('hidden');
-
-        facts.classList.add('hidden');
-        fFrame.src = 'about:blank';
-        fOpen.href = '#';
-      };
-
-      // Suite change
-      suite.onchange = () => {
-        const addrSel  = property.value;
-        const suiteSel = suite.value;
-
-        const g = groups[norm(addrSel)];
-        if(!g) return;
-
-        const row = (g.rows || []).find(r => norm(r.suite) === norm(suiteSel));
-        if(!row) return;
-
-        facts.classList.remove('hidden');
-        sizeEl.textContent = (row.size ? row.size : '—') + (row.size ? ' SF' : '');
-        rentEl.textContent = formatCurrencyMaybe(row.rent);
-        termEl.textContent = (row.min ? row.min : '—') + (row.min ? ' months' : '');
-
-        const floorURL = extractUrl(row.floorRaw||'');
-        fFrame.src = toPreviewUrl(floorURL) || 'about:blank';
-        fOpen.href = floorURL || '#';
-
-        // Desired term options (>= min)
-        const desired = document.getElementById('desiredTerm');
-        const base = Number(String(row.min).replace(/[^0-9.-]/g,''))||0;
-        const candidates = [base, 12, 24, 36, 48, 60, 72]
-          .filter((n,i,arr)=>n && arr.indexOf(n)===i && n>=base)
-          .sort((a,b)=>a-b);
-        const opts = ['<option value="">(choose)</option>'];
-        for(const m of candidates){
-          const years = Math.floor(m/12), months = m%12;
-          const label = (years? years+' yr'+(years>1?'s':'')+' ':'') + (months? months+' mo':'' || (!years?'0 mo':''));
-          opts.push(`<option value="${m}">${label.trim()}</option>`);
-        }
-        desired.innerHTML = opts.join('');
-      };
-
-      // Submit handler
-      const form     = document.getElementById('tenantForm');
-      const submitBtn= document.getElementById('submitBtn');
-      const submitMsg= document.getElementById('submitMsg');
-
-      form.addEventListener('submit', async (e)=>{
-        e.preventDefault();
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Submitting…';
-        submitMsg.textContent = '';
-
-        const addrSel  = property.value;
-        const suiteSel = suite.value;
-
-        const g = groups[norm(addrSel)] || {rows:[]};
-        const row = (g.rows || []).find(r => norm(r.suite) === norm(suiteSel)) || {};
-
-        const payload = {
-          property: addrSel || '',
-          suite: suiteSel || '',
-          size_sf: row.size || '',
-          total_rent: row.rent || '',
-          min_term_months: row.min || '',
-          building_photo: extractUrl(row.photoRaw)||'',
-          floorplan: extractUrl(row.floorRaw)||'',
-          business_legal_name: document.getElementById('bizName').value.trim(),
-          signer1: document.getElementById('signer1').value.trim(),
-          signer2: document.getElementById('signer2').value.trim(),
-          desired_term_months: document.getElementById('desiredTerm').value,
-          email: document.getElementById('email').value.trim(),
-          phone: document.getElementById('phone').value.trim(),
-          mailing_address: document.getElementById('mailing').value.trim(),
-          desired_start_date: document.getElementById('startDate').value,
-          admin_email: ADMIN_EMAIL,
-          from_email: FROM_EMAIL,
-          subject: `New Tenant Inquiry — ${addrSel||'[no property]'} ${suiteSel?('Suite '+suiteSel):''}`
-        };
-
-        const file = document.getElementById('financials').files[0];
-        if(file){
-          if(file.size > 5*1024*1024){
-            submitMsg.className = 'text-red-700';
-            submitMsg.textContent = 'Upload rejected: file is larger than 5 MB. Please choose a smaller file.';
-            submitBtn.textContent = 'Submit';
-            submitBtn.disabled = false;
-            return;
-          }
-          const encoded = await new Promise((resolve)=>{
-            const fr = new FileReader();
-            fr.onload = () => resolve({ name:file.name, type:file.type||'application/octet-stream', data: String(fr.result).split(',')[1] });
-            fr.readAsDataURL(file);
-          });
-          payload.financials_name = encoded.name;
-          payload.financials_mime = encoded.type;
-          payload.financials_base64 = encoded.data;
-        }
-
-        const fd = new FormData();
-        Object.entries(payload).forEach(([k,v])=> fd.append(k, v==null? '' : String(v)));
-
-        let ok = true;
-        try{ await fetch(WEBHOOK_URL, { method:'POST', mode:'no-cors', body: fd }); }
-        catch(err){ ok = false; console.error(err); }
-
-        // Build the thank-you page, conditionally showing the credit section
-        const clickedPF = (function(){
-          try { return !!localStorage.getItem(PF_CLICK_KEY); } catch(e){ return false; }
-        })();
-
-        if(ok){
-          // If they did NOT click the powerform link earlier, we show the notice and link here.
-          const creditBlock = clickedPF ? '' : `
-            <a href="${POWERFORM_URL}" target="_blank" class="inline-flex items-center px-4 py-2 rounded-lg text-white bg-red-700 hover:bg-red-800 mb-3">
-              Credit Application and Authorization Form
-            </a>
-            <p class="text-sm text-gray-600 mb-6">
-              <span class="font-semibold">You have not submitted the credit authorization form yet.</span><br>
-              Credit check authorization is mandatory to complete the tenant application process.
-              Credit checks are performed using a third party credit service and are at no charge
-              to the prospective tenant.
-            </p>`;
-
-          document.body.innerHTML = `
-            <main class="min-h-screen grid place-items-center p-6" style="background: linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter;">
-              <div class="max-w-2xl bg-white rounded-2xl shadow-xl border p-8 text-center">
-                <img src="https://drive.google.com/thumbnail?id=1OOpckQf5nfNtT90XcGaXd4F-s25iEcR0&sz=w1200" alt="Lee & Associates Logo" class="mx-auto h-16 object-contain mb-4" onerror="this.style.display='none'">
-                <h1 class="text-2xl font-semibold text-gray-800 mb-2">Thank you for your submission</h1>
-                <p class="text-gray-700 mb-4">We’ve received your information.</p>
-
-                ${creditBlock}
-
-                <div class="text-left inline-block text-gray-800 text-sm leading-6 mb-6">
-                  <p class="font-semibold">For additional questions and inquiries feel free to reach me directly at:</p>
-                  <p><span class="font-medium">Email:</span> Chris.johnson@lee-associates.com</p>
-                  <p><span class="font-medium">Phone:</span> 626-240-2786</p>
-                  <p>Chris Johnson — Senior Vice President</p>
-                  <p>Lee and Associates — Pasadena Inc.</p>
-                  <p>1055 E Colorado Blvd. STE 330</p>
-                  <p>Pasadena, CA 91106</p>
-                </div>
-
-                <button onclick="window.location.href=window.location.pathname" class="mt-2 inline-flex items-center px-4 py-2 rounded-lg text-white bg-red-700 hover:bg-red-800">Home</button>
-              </div>
-            </main>`;
-        } else {
-          submitMsg.className = 'text-red-700';
-          submitMsg.textContent = 'There was a problem submitting to the server. Please try again.';
-          submitBtn.textContent = 'Submit';
-          submitBtn.disabled = false;
-        }
-      });
-
-    }catch(err){
-      const warn = document.getElementById('sheetWarn');
-      warn.textContent = 'Error loading sheet: ' + (err && err.message ? err.message : err);
-      warn.classList.remove('hidden');
-      console.error(err);
-    }
-  })();
+  return out;
+}
+fetch(SHEET_URL + Date.now())
+  .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+  .then(function(t){ boot({ units: sheetToUnits(parseCsv(t)) }); })
+  .catch(function(){ el("selProperty").innerHTML = "<option value=\"\">Could not load unit data - please refresh in a minute</option>"; });
 </script>
 </body>
 </html>
