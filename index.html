@@ -30,7 +30,7 @@
           <div><div class="text-xs uppercase text-gray-500">Total Rent</div><div id="fRent" class="font-bold"></div></div>
           <div><div class="text-xs uppercase text-gray-500">Minimum Term</div><div id="fTerm" class="font-bold"></div></div>
         </div>
-        <div id="fRentDetail" class="mt-2 text-center text-gray-600"></div>
+        <div id="fRentDetail" class="mt-2 text-center text-gray-600 leading-6"></div>
         <div id="fBlurb" class="mt-2 text-gray-600"></div>
       </div>
       <div id="mediaWrap" class="hidden space-y-2">
@@ -87,13 +87,9 @@ function thumbUrl(u){ var id = driveId(extractUrl(u)); return id ? "https://driv
 function fmtMoney(x){ var n = Number(String(x == null ? "" : x).replace(/[^0-9.]/g, "")); return n ? "$" + n.toLocaleString("en-US") + "/mo" : "Call for rent"; }
 function fmtSf(x){ var n = Number(String(x == null ? "" : x).replace(/[^0-9.]/g, "")); return n ? n.toLocaleString("en-US") + " SF" : "-"; }
 function money(n){ return "$" + Math.round(Number(n) || 0).toLocaleString("en-US"); }
-/* Rent presentation is driven by the Rate Basis column plus any named expense rows:
-   full service gross -> "Including utilities"
-   everything else    -> "* Utilities not included"
-   Any expenses present -> headline is the all in monthly figure, detail shows the all in
-   PSF and a parenthetical breakdown of base rent plus each named expense.
-   A triple net row with no expense entered says the estimate is pending rather than
-   showing base rent as if it were the full cost. */
+/* Rent presentation is driven by the Rate Basis column plus any named expense rows.
+   The PSF quoted is always the asking rate on the base rent, never a blended figure.
+   Returns a headline amount plus stacked detail lines. */
 function rentInfo(u){
   var basis = String(u.rate_note == null ? "" : u.rate_note).toLowerCase();
   var base = Number(String(u.total_rent == null ? "" : u.total_rent).replace(/[^0-9.]/g, "")) || 0;
@@ -101,20 +97,19 @@ function rentInfo(u){
   var exp = (u.expenses || []).filter(function(e){ return e.monthly > 0; });
   var fsg = basis.indexOf("full service") >= 0;
   var nnn = basis.indexOf("triple") >= 0 || basis.indexOf("nnn") >= 0;
-  var util = fsg ? "Including utilities" : "* Utilities not included";
-  if (!base) return { amount: "Call for rent", detail: "" };
+  if (!base) return { amount: "Call for rent", lines: [] };
   var extra = 0;
   exp.forEach(function(e){ extra += e.monthly; });
-  var allIn = base + extra;
-  var psf = sf ? " (" + "$" + (allIn / sf).toFixed(2) + " PSF" + (extra ? " all in" : "") + ")" : "";
-  if (!exp.length){
-    if (nnn) return { amount: fmtMoney(base), detail: "Base rent only, NNN estimate pending " + util };
-    return { amount: fmtMoney(base), detail: (sf ? "$" + (base / sf).toFixed(2) + " PSF " : "") + util };
+  var lines = [];
+  if (sf) lines.push("$" + (base / sf).toFixed(2) + " PSF");
+  if (exp.length){
+    lines.push(money(base) + " base rent");
+    exp.forEach(function(e){ lines.push("+ " + money(e.monthly) + " " + e.name + "/month"); });
+  } else if (nnn){
+    lines.push("Base rent only, NNN estimate pending");
   }
-  var parts = [money(base) + " base rent"];
-  exp.forEach(function(e){ parts.push(money(e.monthly) + " " + e.name); });
-  return { amount: fmtMoney(allIn),
-    detail: (sf ? "$" + (allIn / sf).toFixed(2) + " PSF all in " : "") + "(" + parts.join(" + ") + ") " + util };
+  lines.push(fsg ? "Including utilities" : "* Utilities not included");
+  return { amount: fmtMoney(base + extra), lines: lines };
 }
 function el(id){ return document.getElementById(id); }
 function props(){ var seen = {}, out = []; UNITS.forEach(function(u){ if (!seen[norm(u.address)]){ seen[norm(u.address)] = 1; out.push(u.address); } }); return out; }
@@ -142,7 +137,14 @@ function showUnit(){
   el("fSize").textContent = fmtSf(u.size_sf);
   var ri = rentInfo(u);
   el("fRent").textContent = ri.amount;
-  el("fRentDetail").textContent = ri.detail;
+  var det = el("fRentDetail");
+  det.innerHTML = "";
+  ri.lines.forEach(function(t, i){
+    var d = document.createElement("div");
+    d.textContent = t;
+    if (i === ri.lines.length - 1) d.className = "text-xs text-gray-500 mt-1";
+    det.appendChild(d);
+  });
   el("fTerm").textContent = (u.min_term_months || "12") + " months";
   el("fBlurb").textContent = u.blurb || "";
   fillTerm(u); showMedia(u);
